@@ -18,6 +18,26 @@ export const initDb = async () => {
       created_at TIMESTAMP DEFAULT Now(),
       updated_at TIMESTAMP DEFAULT Now()
     )`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS issues (
+     id SERIAL PRIMARY KEY,
+
+    title VARCHAR(150) NOT NULL,
+
+    description TEXT NOT NULL
+    CHECK (LENGTH(description) >= 20),
+
+    type VARCHAR(20) NOT NULL
+    CHECK (type IN ('bug', 'feature_request')),
+
+    status VARCHAR(20) DEFAULT 'open'
+    CHECK (status IN ('open', 'in_progress', 'resolved')),
+
+    reporter_id INTEGER NOT NULL ,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    updated_at TIMESTAMP DEFAULT NOW())`);
   } catch (err) {
     console.error("Error initializing database:", err);
   }
