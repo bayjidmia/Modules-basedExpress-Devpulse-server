@@ -1,6 +1,7 @@
-import { pool } from "../..";
-import type { IUser } from "./users.interface";
+import { pool } from "../../db";
+
 import bcrypt from "bcrypt";
+import type { IUser } from "./users.interface";
 
 const createUserInDb = async (payload: IUser) => {
   const { name, email, password, role } = payload;
