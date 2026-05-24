@@ -23,5 +23,5 @@ export interface Issue {
 export interface User {
   id: number;
   name: string;
-  role: string;
+  role: "maintainer" | "contributor";
 }

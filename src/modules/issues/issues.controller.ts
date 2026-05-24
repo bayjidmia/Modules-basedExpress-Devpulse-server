@@ -3,9 +3,12 @@ import { issuesService } from "./issues.service";
 
 const CreateIssue = async (req: Request, res: Response) => {
   try {
-    const token = req.headers.authorization;
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
     {
-      const result = await issuesService.createIssueIndb(req.body, token);
+      const result = await issuesService.createIssueIndb(req.body, user.id);
       res.status(201).json({
         success: true,
         message: "Issue created successfully",
@@ -26,6 +29,7 @@ const GetAllIssues = async (req: Request, res: Response) => {
     const result = await issuesService.getAllIssuesFromDb(req.query);
     res.status(200).json({
       success: true,
+      message: "Issues retrived successfully",
       data: result,
     });
   } catch (error: any) {
@@ -52,6 +56,7 @@ const GetIssueById = async (req: Request, res: Response) => {
     const result = await issuesService.getIssueByIdFromDb(numericId);
     res.status(200).json({
       success: true,
+      message: "Issue retrived successfully",
       data: result,
     });
   } catch (error: any) {
@@ -66,7 +71,6 @@ const GetIssueById = async (req: Request, res: Response) => {
 const UpdateIssue = async (req: Request, res: Response) => {
   const { id } = req.params;
   const numericId = Number(id);
-  const token = req.headers.authorization;
 
   if (isNaN(numericId)) {
     return res.status(400).json({
@@ -77,10 +81,15 @@ const UpdateIssue = async (req: Request, res: Response) => {
   }
 
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
     const result = await issuesService.updateIssueInDb(
       numericId,
       req.body,
-      token,
+      user.role,
+      user.id,
     );
     res.status(200).json({
       success: true,
@@ -97,8 +106,6 @@ const UpdateIssue = async (req: Request, res: Response) => {
 };
 
 const DeleteIssue = async (req: Request, res: Response) => {
-  const token = req.headers.authorization;
-
   const { id } = req.params;
   const numericId = Number(id);
   if (isNaN(numericId)) {
@@ -109,11 +116,10 @@ const DeleteIssue = async (req: Request, res: Response) => {
     });
   }
   try {
-    const result = await issuesService.deleteIssueFromDb(numericId, token);
+    const result = await issuesService.deleteIssueFromDb(numericId);
     res.status(200).json({
       success: true,
       message: "Issue deleted successfully",
-      data: result,
     });
   } catch (error: any) {
     res.status(500).json({

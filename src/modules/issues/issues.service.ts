@@ -1,4 +1,3 @@
-import { config } from "../../config/config";
 import { pool } from "../../db";
 import {
   type Issue,
@@ -6,28 +5,13 @@ import {
   type IssuePayload,
   type User,
 } from "./issues.interface";
-import jwt from "jsonwebtoken";
 
-const createIssueIndb = async (
-  payload: IssuePayload,
-  token: string | undefined,
-) => {
+const createIssueIndb = async (payload: IssuePayload, userId: number) => {
   const { title, description, type } = payload;
-  const accessToken = token;
-  console.log(token);
-  if (!accessToken) {
-    throw new Error("Unauthorized access");
-  }
-  const decoded = jwt.verify(
-    accessToken as string,
-    config.jwt_secret as string,
-  );
-
-  const id = (decoded as jwt.JwtPayload).id;
 
   const result = await pool.query(
     `INSERT INTO issues (title, description, type, reporter_id) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [title, description, type, id],
+    [title, description, type, userId],
   );
   return result.rows[0];
 };
@@ -111,21 +95,11 @@ const getIssueByIdFromDb = async (id: number) => {
 const updateIssueInDb = async (
   id: number,
   payload: IssuePayload,
-  token: string | undefined,
+  role: "maintainer" | "contributor",
+  userId: number,
 ) => {
-  const accessToken = token;
   const { title, description, type, status } = payload;
-  if (!accessToken) {
-    throw new Error("Unauthorized access");
-  }
 
-  const decoded = jwt.verify(
-    accessToken as string,
-    config.jwt_secret as string,
-  ) as {
-    id: number;
-    role: "maintainer" | "contributor";
-  };
   const issueResult = await pool.query(`SELECT * FROM issues WHERE id = $1`, [
     id,
   ]);
@@ -136,8 +110,8 @@ const updateIssueInDb = async (
     throw new Error("Issue not found");
   }
 
-  if (decoded.role === "contributor") {
-    if (issue.reporter_id !== decoded.id) {
+  if (role === "contributor") {
+    if (issue.reporter_id !== userId) {
       throw new Error("Forbidden: You cannot update this issue");
     }
 
@@ -148,7 +122,7 @@ const updateIssueInDb = async (
 
   let updatedIssueResult;
 
-  if (decoded.role === "maintainer") {
+  if (role === "maintainer") {
     updatedIssueResult = await pool.query(
       `
       UPDATE issues
@@ -182,18 +156,7 @@ const updateIssueInDb = async (
   return updatedIssueResult.rows[0];
 };
 
-const deleteIssueFromDb = async (id: number, token: string | undefined) => {
-  const accessToken = token;
-  if (!accessToken) {
-    throw new Error("Unauthorized access");
-  }
-  const decoded = jwt.verify(
-    accessToken as string,
-    config.jwt_secret as string,
-  ) as {
-    id: number;
-    role: "maintainer" | "contributor";
-  };
+const deleteIssueFromDb = async (id: number) => {
   const issueResult = await pool.query(`SELECT * FROM issues WHERE id = $1`, [
     id,
   ]);
@@ -201,9 +164,7 @@ const deleteIssueFromDb = async (id: number, token: string | undefined) => {
   if (!issue) {
     throw new Error("Issue not found");
   }
-  if (decoded.role !== "maintainer") {
-    throw new Error("Forbidden: Only maintainers can delete issues");
-  }
+
   const result = await pool.query(
     `DELETE FROM issues WHERE id = $1 RETURNING *`,
     [id],
